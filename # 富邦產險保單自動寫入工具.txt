@@ -1,0 +1,21 @@
+# 富邦產險保單自動寫入工具
+
+上傳 JSON → 自動清理資料 → 寫入 Google Sheets
+
+## 使用方式
+
+直接開啟：**https://ingbaker-bot.github.io/non-life/fubon-tool.html**
+
+## 功能
+
+- 支援 8 種險種：車險、住宅火險、健康傷害險、個人新種險、企業水險、企業火險、企業工程險、企業新種險
+- 自動去重、電話格式化、按生效日排序
+- **接續寫入**：不覆蓋原有資料，自動從最後一筆接續
+- ID 連貫編號
+- 支援原始資料備份工作表
+
+## 首次設定
+
+1. 在 `fubon-tool.html` 第 584 行填入 Google OAuth Client ID
+2. Google Console 授權來源填入 `https://ingbaker-bot.github.io`
+3. 確認已啟用 Google Sheets API
