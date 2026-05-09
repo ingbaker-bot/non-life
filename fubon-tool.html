@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>富邦保險 × Sheets 自動寫入工具</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --border2: #3d4470;
+    --accent: #4f7fff;
+    --accent2: #7c5fff;
+    --success: #22c98a;
+    --warn: #f5a623;
+    --danger: #ff5e6c;
+    --text: #e8ecf8;
+    --text2: #8b93b8;
+    --text3: #555d80;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Noto Sans TC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-logo {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header-title { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+  .header-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .header-status {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text2);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--text3);
+  }
+  .status-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+  /* Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: calc(100vh - 73px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  /* Config inputs */
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--mono);
+    padding: 9px 12px;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+    background: #1e2238;
+  }
+  .field input::placeholder { color: var(--text3); font-family: var(--sans); }
+  .field select option { background: var(--surface2); }
+
+  .field-hint {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  /* Buttons */
+  .btn {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--sans);
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #6890ff; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { background: var(--surface2); color: var(--text3); cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--border); color: var(--text); }
+  .btn-success {
+    background: var(--success);
+    color: #fff;
+  }
+  .btn-success:hover { background: #2ee8a0; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border2);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: #1a2040;
+  }
+  .upload-zone .upload-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.6; }
+  .upload-zone p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .upload-zone span { color: var(--accent); cursor: pointer; }
+  #file-input { display: none; }
+
+  /* Main content */
+  .main { padding: 28px 32px; overflow-y: auto; }
+
+  /* Step indicator */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+  }
+  .step {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 10px 8px; border-radius: 8px;
+    font-size: 12px; color: var(--text3); font-weight: 500;
+    transition: all 0.2s;
+  }
+  .step.active {
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .step.done { color: var(--success); }
+  .step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; flex-shrink: 0;
+  }
+  .step.active .step-num { background: var(--accent); color: #fff; }
+  .step.done .step-num { background: var(--success); color: #fff; }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--text); font-family: var(--mono); }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.success { color: var(--success); }
+  .stat-value.warn { color: var(--warn); }
+
+  /* Table */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .table-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .table-title { font-size: 13px; font-weight: 600; }
+  .table-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+  .table-scroll { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    background: var(--surface2);
+    color: var(--text2);
+    font-weight: 600;
+    padding: 10px 14px;
+    text-align: left;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 1;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); color: var(--text); }
+  td.primary { color: var(--text); font-weight: 500; }
+  td.mono { font-family: var(--mono); }
+  .badge-warn { background: rgba(245,166,35,0.15); color: var(--warn); padding: 2px 8px; border-radius: 99px; font-family: var(--sans); }
+  .badge-ok { background: rgba(34,201,138,0.15); color: var(--success); padding: 2px 8px; border-radius: 99px; font-family: var(--sans); }
+
+  /* Log console */
+  .log-console {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+    max-height: 200px;
+    overflow-y: auto;
+    color: var(--text3);
+  }
+  .log-line { margin-bottom: 2px; }
+  .log-ok { color: var(--success); }
+  .log-info { color: var(--accent); }
+  .log-warn { color: var(--warn); }
+  .log-error { color: var(--danger); }
+
+  /* Progress bar */
+  .progress-wrap {
+    background: var(--surface2);
+    border-radius: 99px;
+    height: 4px;
+    margin: 12px 0;
+    overflow: hidden;
+    display: none;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 99px;
+    transition: width 0.3s;
+    width: 0%;
+  }
+
+  /* Mode cards */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .mode-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface2);
+  }
+  .mode-card:hover { border-color: var(--border2); }
+  .mode-card.selected {
+    border-color: var(--accent);
+    background: #1a2040;
+  }
+  .mode-card-title { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+  .mode-card-desc { font-size: 11px; color: var(--text3); line-height: 1.5; }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 18px 0;
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 40px;
+    text-align: center;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+  .empty-title { font-size: 16px; color: var(--text2); font-weight: 600; margin-bottom: 8px; }
+  .empty-desc { font-size: 13px; line-height: 1.7; max-width: 320px; }
+
+  /* Auth section */
+  .auth-card {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .auth-title {
+    font-size: 13px; font-weight: 600; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .auth-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* Copy btn area */
+  .copy-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .action-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .action-card-title {
+    font-size: 12px; font-weight: 600; color: var(--text2); 
+    margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em;
+    font-size: 10px;
+  }
+  .action-card-sheet { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .action-card-range {
+    font-size: 11px; color: var(--text3); font-family: var(--mono);
+    margin-bottom: 12px;
+  }
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 600; margin-bottom: 12px; }
+  .tag-blue { background: rgba(79,127,255,0.15); color: var(--accent); }
+  .tag-purple { background: rgba(124,95,255,0.15); color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">📋</div>
+  <div>
+    <div class="header-title">富邦保險 Sheets 自動寫入工具</div>
+    <div class="header-sub">JSON 解析 · 資料清理 · 自動寫入 Google Sheets</div>
+  </div>
+  <div class="header-status">
+    <div class="status-dot" id="conn-dot"></div>
+    <span id="conn-text">未連線</span>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div>
+      <div class="section-label">① 上傳 JSON</div>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-icon">📂</div>
+        <p>點擊或拖曳 JSON 檔案<br><span>選擇檔案</span></p>
+      </div>
+      <input type="file" id="file-input" accept=".json">
+      <div id="file-info" style="display:none; margin-top:10px; font-size:12px; color:var(--success); background:rgba(34,201,138,0.08); border:1px solid rgba(34,201,138,0.2); border-radius:8px; padding:8px 12px;"></div>
+    </div>
+
+    <hr class="divider" style="margin:0">
+
+    <div>
+      <div class="section-label">② 寫入模式</div>
+      <div class="mode-grid">
+        <div class="mode-card selected" id="mode-api" onclick="selectMode('api')">
+          <div class="mode-card-title">🔗 API 自動寫入</div>
+          <div class="mode-card-desc">授權後直接寫入 Sheets，免手動貼上</div>
+        </div>
+        <div class="mode-card" id="mode-copy" onclick="selectMode('copy')">
+          <div class="mode-card-title">📋 手動複製貼上</div>
+          <div class="mode-card-desc">複製 TSV，自行貼到指定儲存格</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="api-config">
+      <div class="section-label">③ Sheets 設定</div>
+
+      <div class="field">
+        <label>Spreadsheet ID</label>
+        <input type="text" id="sheet-id" placeholder="從網址列複製 ID">
+        <div class="field-hint">網址中 /d/ 後面那段長字串</div>
+      </div>
+      <div class="field">
+        <label>保單主表名稱</label>
+        <input type="text" id="sheet-main" value="保單主表" placeholder="保單主表">
+      </div>
+      <div class="field">
+        <label>險種明細表名稱</label>
+        <input type="text" id="sheet-detail" value="險種明細表" placeholder="險種明細表">
+      </div>
+      <div class="field">
+        <label>原始資料備份表（可選）</label>
+        <input type="text" id="sheet-raw" value="原始資料" placeholder="留空則不備份">
+      </div>
+
+      <button class="btn btn-ghost" id="btn-auth" onclick="startAuth()" style="margin-bottom:8px">
+        🔑 Google 授權登入
+      </button>
+    </div>
+
+    <div id="copy-config" style="display:none">
+      <div class="section-label">③ 複製選項</div>
+      <div class="field">
+        <label>目標工作表</label>
+        <select id="copy-target">
+          <option value="both">保單主表 + 明細表（兩份）</option>
+          <option value="main">僅保單主表</option>
+          <option value="detail">僅險種明細表</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:auto">
+      <button class="btn btn-primary" id="btn-run" onclick="runProcess()" disabled>
+        ▶ 開始處理並寫入
+      </button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="main-content">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🗂️</div>
+      <div class="empty-title">上傳 JSON 開始作業</div>
+      <div class="empty-desc">從左側上傳富邦保險 JSON 檔案，系統將自動解析並整理成 Sheets 格式</div>
+    </div>
+
+    <div id="result-area" style="display:none">
+      <!-- Steps -->
+      <div class="steps" id="step-bar">
+        <div class="step active" id="s1"><div class="step-num">1</div> 解析 JSON</div>
+        <div class="step" id="s2"><div class="step-num">2</div> 清理資料</div>
+        <div class="step" id="s3"><div class="step-num">3</div> 寫入 Sheets</div>
+        <div class="step" id="s4"><div class="step-num">4</div> 完成</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="stats-area">
+        <div class="stat-card"><div class="stat-label">保單總數</div><div class="stat-value accent" id="stat-total">-</div></div>
+        <div class="stat-card"><div class="stat-label">總保費</div><div class="stat-value" id="stat-fee">-</div></div>
+        <div class="stat-card"><div class="stat-label">已收足</div><div class="stat-value success" id="stat-paid">-</div></div>
+        <div class="stat-card"><div class="stat-label">未收足</div><div class="stat-value warn" id="stat-unpaid">-</div></div>
+      </div>
+
+      <!-- Copy actions (for copy mode) -->
+      <div class="copy-actions" id="copy-action-area" style="display:none">
+        <div class="action-card">
+          <div class="action-card-title">工作表 1</div>
+          <div class="action-card-sheet">保單主表</div>
+          <div class="action-card-range">貼到 A2 開始</div>
+          <div class="tag tag-blue">20 欄</div>
+          <button class="btn btn-primary" id="copy-main-btn" onclick="copyMain()">📋 複製主表資料</button>
+        </div>
+        <div class="action-card">
+          <div class="action-card-title">工作表 2</div>
+          <div class="action-card-sheet">險種明細表</div>
+          <div class="action-card-range">貼到 A2 開始</div>
+          <div class="tag tag-purple">8 欄</div>
+          <button class="btn btn-primary" id="copy-detail-btn" onclick="copyDetail()">📋 複製明細表資料</button>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+
+      <!-- Tables -->
+      <div class="table-wrap" id="table-main-wrap">
+        <div class="table-header">
+          <div class="table-title">保單主表預覽</div>
+          <div class="table-badge" id="badge-main">-</div>
+        </div>
+        <div class="table-scroll">
+          <table id="table-main"></table>
+        </div>
+      </div>
+
+      <div class="table-wrap" id="table-detail-wrap">
+        <div class="table-header">
+          <div class="table-title">險種明細表預覽</div>
+          <div class="table-badge" id="badge-detail">-</div>
+        </div>
+        <div class="table-scroll">
+          <table id="table-detail"></table>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div style="font-size:12px; color:var(--text3); margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">處理日誌</div>
+      <div class="log-console" id="log-console"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== CONFIG ===== */
+const CLIENT_ID = '362093552465-6a11v6vl99ngb0ch3kvet7qv9dadm64l.apps.googleusercontent.com'; // 填入你的 Google OAuth Client ID
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+let currentMode = 'api';
+let jsonData = null;
+let mainRows = [];
+let detailRows = [];
+let tokenClient = null;
+let accessToken = null;
+let isAuthed = false;
+
+/* ===== UTILS ===== */
+function log(msg, type='info') {
+  const el = document.getElementById('log-console');
+  const line = document.createElement('div');
+  line.className = `log-line log-${type}`;
+  const now = new Date().toLocaleTimeString('zh-TW', {hour12:false});
+  line.textContent = `[${now}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStep(n) {
+  for(let i=1;i<=4;i++) {
+    const el = document.getElementById('s'+i);
+    if(i < n) { el.className='step done'; el.querySelector('.step-num').textContent='✓'; }
+    else if(i === n) el.className='step active';
+    else el.className='step';
+  }
+}
+
+function setProgress(pct) {
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('progress-bar').style.width = pct+'%';
+}
+
+function formatPhone(p) {
+  if (!p || p === '無') return '無';
+  const d = p.toString().replace(/\D/g, '');
+  if (d.startsWith('09') && d.length === 10)
+    return d.substring(0,4)+'-'+d.substring(4,7)+'-'+d.substring(7);
+  return '無';
+}
+
+function rocSort(a, b) {
+  const toN = s => {
+    if (!s || s==='無') return 0;
+    const p = s.split('/');
+    return (parseInt(p[0])+1911)*10000 + parseInt(p[1])*100 + parseInt(p[2]);
+  };
+  return toN(a['基本資訊']['生效日']) - toN(b['基本資訊']['生效日']);
+}
+
+/* ===== DEDUP ===== */
+function dedup(arr) {
+  const seen = new Set();
+  return arr.filter(r => {
+    const key = r['險種'] + '_' + r['保單號碼'];
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+/* ===== PROCESS JSON ===== */
+function processData(data) {
+  log('開始解析 JSON...', 'info');
+  const cleaned = dedup(data);
+  log(`去重後：${data.length} → ${cleaned.length} 筆`, cleaned.length < data.length ? 'warn' : 'ok');
+
+  const sorted = [...cleaned].sort(rocSort);
+  log('按生效日排序完成', 'ok');
+
+  let rowIdx = 1;
+  const today = new Date().toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit'});
+
+  mainRows = sorted.map(r => [
+    rowIdx++,
+    r['保單號碼'] || '無',
+    r['險種別'] || r['險種'] || '無',
+    r['被保人']['身分證號'] || '無',
+    r['被保人']['姓名'] || '無',
+    formatPhone(r['被保人']['行動電話']),
+    r['被保人']['出生年月日'] || '無',
+    r['要保人']['身分證號'] || '無',
+    r['要保人']['姓名'] || '無',
+    formatPhone(r['要保人']['行動電話']),
+    r['保費資訊']['總保費'] || '無',
+    r['基本資訊']['繳費方式'] || '無',
+    r['基本資訊']['繳費狀況'] || '無',
+    r['保費資訊']['卡號'] || '無',
+    r['保費資訊']['有效期限'] || '無',
+    r['基本資訊']['生效日'] || '無',
+    r['基本資訊']['到期日'] || '無',
+    r['基本資訊']['保單狀態'] || '無',
+    r['車牌'] || '無',
+    r['基本資訊']['Email'] || '無',
+    r['基本資訊']['地址'] || '無',
+    today
+  ]);
+
+  let dIdx = 1;
+  detailRows = [];
+  sorted.forEach(r => {
+    (r['險種明細'] || []).forEach(d => {
+      detailRows.push([
+        dIdx++,
+        r['保單號碼'],
+        d['險種代號'] || '無',
+        d['險種名稱'] || '無',
+        d['自負額'] || '無',
+        d['保費'] || '無',
+        d['保額'] || '無',
+        d['備註'] || '無'
+      ]);
+    });
+  });
+
+  log(`保單主表：${mainRows.length} 筆 × 22 欄`, 'ok');
+  log(`險種明細表：${detailRows.length} 筆 × 8 欄`, 'ok');
+
+  // Stats
+  const total = sorted.reduce((s,r) => s + parseInt((r['保費資訊']['總保費']||'0').replace(/,/g,'')||0), 0);
+  document.getElementById('stat-total').textContent = sorted.length;
+  document.getElementById('stat-fee').textContent = 'NT$' + total.toLocaleString();
+  document.getElementById('stat-paid').textContent = sorted.filter(r=>r['基本資訊']['繳費狀況']==='已收足').length;
+  document.getElementById('stat-unpaid').textContent = sorted.filter(r=>r['基本資訊']['繳費狀況']==='未收足').length;
+
+  // Render tables
+  const mainHeaders = ['保單ID','保單號碼','險種別','被保人身分證號','被保人姓名','被保人電話','被保人生日','要保人身分證號','要保人姓名','要保人電話','總保費','繳費方式','繳費狀況','卡號','有效期限','生效日','到期日','保單狀態','車牌','Email','地址','最後更新'];
+  renderTable('table-main', mainHeaders, mainRows);
+  document.getElementById('badge-main').textContent = mainRows.length + ' 筆';
+
+  const detailHeaders = ['明細ID','保單號碼','險種代號','險種名稱','自負額','保費','保額','備註'];
+  renderTable('table-detail', detailHeaders, detailRows);
+  document.getElementById('badge-detail').textContent = detailRows.length + ' 筆';
+
+  return sorted;
+}
+
+function renderTable(id, headers, rows) {
+  const t = document.getElementById(id);
+  let html = '<thead><tr>' + headers.map(h=>`<th>${h}</th>`).join('') + '</tr></thead><tbody>';
+  const preview = rows.slice(0, 8);
+  preview.forEach(r => {
+    html += '<tr>' + r.map((c,i)=>{
+      let cls = '';
+      if(i===1||i===4) cls=' class="primary"';
+      if(c==='未收足') return `<td><span class="badge-warn">${c}</span></td>`;
+      if(c==='已收足') return `<td><span class="badge-ok">${c}</span></td>`;
+      return `<td${cls}>${c}</td>`;
+    }).join('') + '</tr>';
+  });
+  if(rows.length > 8) html += `<tr><td colspan="${headers.length}" style="text-align:center;color:var(--text3);padding:12px">…另有 ${rows.length-8} 筆未顯示</td></tr>`;
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+/* ===== MODE SWITCH ===== */
+function selectMode(m) {
+  currentMode = m;
+  document.getElementById('mode-api').classList.toggle('selected', m==='api');
+  document.getElementById('mode-copy').classList.toggle('selected', m==='copy');
+  document.getElementById('api-config').style.display = m==='api' ? '' : 'none';
+  document.getElementById('copy-config').style.display = m==='copy' ? '' : 'none';
+  updateRunBtn();
+}
+
+/* ===== FILE UPLOAD ===== */
+document.getElementById('file-input').addEventListener('change', function(e) {
+  loadFile(e.target.files[0]);
+});
+
+const zone = document.getElementById('upload-zone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  loadFile(e.dataTransfer.files[0]);
+});
+
+function loadFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      jsonData = JSON.parse(e.target.result);
+      document.getElementById('file-info').style.display = '';
+      document.getElementById('file-info').innerHTML = `✓ ${file.name}<br><span style="color:var(--text3)">${jsonData.length} 筆記錄 · ${(file.size/1024).toFixed(1)} KB</span>`;
+
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('result-area').style.display = '';
+      document.getElementById('log-console').innerHTML = '';
+
+      setStep(1);
+      const sorted = processData(jsonData);
+      setStep(2);
+      log('資料清理完成，等待寫入...', 'info');
+
+      if (currentMode === 'copy') {
+        document.getElementById('copy-action-area').style.display = 'grid';
+      }
+      updateRunBtn();
+    } catch(err) {
+      alert('JSON 格式錯誤：' + err.message);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function updateRunBtn() {
+  const btn = document.getElementById('btn-run');
+  if (!jsonData) { btn.disabled = true; btn.textContent = '▶ 開始處理並寫入'; return; }
+  if (currentMode === 'copy') {
+    btn.disabled = false;
+    btn.textContent = '▶ 顯示複製按鈕';
+  } else {
+    btn.disabled = !isAuthed;
+    btn.textContent = isAuthed ? '▶ 寫入 Google Sheets' : '▶ 請先 Google 授權';
+  }
+}
+
+/* ===== COPY MODE ===== */
+function toTSV(rows) { return rows.map(r => r.join('\t')).join('\n'); }
+
+function copyMain() {
+  navigator.clipboard.writeText(toTSV(mainRows)).then(() => {
+    const btn = document.getElementById('copy-main-btn');
+    btn.textContent = '✓ 已複製！貼到保單主表 A2';
+    btn.className = 'btn btn-success';
+    log('保單主表 TSV 已複製到剪貼板', 'ok');
+    setTimeout(() => { btn.textContent = '📋 複製主表資料'; btn.className='btn btn-primary'; }, 4000);
+  });
+}
+
+function copyDetail() {
+  navigator.clipboard.writeText(toTSV(detailRows)).then(() => {
+    const btn = document.getElementById('copy-detail-btn');
+    btn.textContent = '✓ 已複製！貼到明細表 A2';
+    btn.className = 'btn btn-success';
+    log('險種明細表 TSV 已複製到剪貼板', 'ok');
+    setTimeout(() => { btn.textContent = '📋 複製明細表資料'; btn.className='btn btn-primary'; }, 4000);
+  });
+}
+
+/* ===== GOOGLE AUTH ===== */
+function startAuth() {
+  if (!CLIENT_ID) {
+    // Demo mode without real CLIENT_ID
+    alert('請先在工具頂部填入你的 Google OAuth Client ID。\n\n取得方式：\n1. 前往 console.cloud.google.com\n2. 建立專案 → API 和服務 → OAuth 同意畫面\n3. 憑證 → 建立 OAuth 2.0 用戶端 ID（網頁應用程式）\n4. 將 Client ID 貼到 HTML 第 334 行的 CLIENT_ID 變數');
+    return;
+  }
+  if (!window.google) {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = () => initAuth();
+    document.head.appendChild(s);
+  } else {
+    initAuth();
+  }
+}
+
+function initAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { log('授權失敗：' + resp.error, 'error'); return; }
+      accessToken = resp.access_token;
+      isAuthed = true;
+      document.getElementById('conn-dot').className = 'status-dot connected';
+      document.getElementById('conn-text').textContent = '已授權';
+      document.getElementById('btn-auth').textContent = '✓ 已授權';
+      log('Google OAuth 授權成功', 'ok');
+      updateRunBtn();
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+/* ===== SHEETS API: GET LAST ROW ===== */
+async function getLastRow(sheetId, sheetName) {
+  const range = `${sheetName}!A:A`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`;
+  const res = await fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + accessToken }
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || res.statusText);
+  }
+  const data = await res.json();
+  return (data.values || []).length; // returns number of rows with data (including header)
+}
+
+/* ===== SHEETS API: APPEND ===== */
+async function appendToSheets(sheetId, sheetName, rows, startRow) {
+  const range = `${sheetName}!A${startRow}`;
+  const body = { values: rows };
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || res.statusText);
+  }
+  return await res.json();
+}
+
+/* ===== REINDEX ROWS from offset ===== */
+function reindexRows(rows, idOffset) {
+  return rows.map((r, i) => [idOffset + i, ...r.slice(1)]);
+}
+
+async function runProcess() {
+  if (currentMode === 'copy') {
+    document.getElementById('copy-action-area').style.display = 'grid';
+    log('複製模式：請點擊上方複製按鈕後貼到對應工作表', 'info');
+    return;
+  }
+
+  const sheetId = document.getElementById('sheet-id').value.trim();
+  const sheetMain = document.getElementById('sheet-main').value.trim();
+  const sheetDetail = document.getElementById('sheet-detail').value.trim();
+  const sheetRaw = document.getElementById('sheet-raw').value.trim();
+
+  if (!sheetId) { alert('請填入 Spreadsheet ID'); return; }
+
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-run').textContent = '⏳ 讀取現有資料列數...';
+  setStep(3);
+  setProgress(10);
+
+  try {
+    // --- 讀取保單主表目前最後一列 ---
+    log(`讀取「${sheetMain}」現有資料列數...`, 'info');
+    const mainLastRow = await getLastRow(sheetId, sheetMain);
+    const mainStartRow = mainLastRow + 1; // 接在最後一筆後面
+    const mainIdOffset = mainLastRow; // 第1列是標題，所以已有資料筆數 = lastRow-1，新ID從lastRow開始
+    log(`保單主表目前共 ${mainLastRow - 1} 筆，新資料從第 ${mainStartRow} 列開始（ID 從 ${mainIdOffset} 接續）`, 'info');
+    setProgress(20);
+
+    // --- 讀取險種明細表目前最後一列 ---
+    log(`讀取「${sheetDetail}」現有資料列數...`, 'info');
+    const detailLastRow = await getLastRow(sheetId, sheetDetail);
+    const detailStartRow = detailLastRow + 1;
+    const detailIdOffset = detailLastRow;
+    log(`險種明細表目前共 ${detailLastRow - 1} 筆，新資料從第 ${detailStartRow} 列開始（ID 從 ${detailIdOffset} 接續）`, 'info');
+    setProgress(30);
+
+    // --- 重新編 ID ---
+    const reindexedMain = reindexRows(mainRows, mainIdOffset);
+    const reindexedDetail = reindexRows(detailRows, detailIdOffset);
+
+    // --- 備份原始資料（接續） ---
+    if (sheetRaw) {
+      log(`寫入原始備份表「${sheetRaw}」...`, 'info');
+      const rawLastRow = await getLastRow(sheetId, sheetRaw);
+      const rawStart = rawLastRow === 0 ? 1 : rawLastRow + 1;
+      const rawHeaders = rawLastRow === 0
+        ? [['保單號碼','險種','險種別','被保人身分證號','被保人姓名','被保人電話','被保人生日','要保人身分證號','要保人姓名','要保人電話','總保費','繳費方式','繳費狀況','卡號','有效期限','生效日','到期日','保單狀態','車牌','Email','地址','寫入時間']]
+        : [];
+      await appendToSheets(sheetId, sheetRaw, [...rawHeaders, ...reindexedMain], rawStart);
+      log(`原始備份完成（接續第 ${rawStart} 列，共 ${reindexedMain.length} 筆）`, 'ok');
+    }
+    setProgress(55);
+
+    // --- 寫入保單主表 ---
+    log(`寫入保單主表「${sheetMain}」第 ${mainStartRow} 列...`, 'info');
+    await appendToSheets(sheetId, sheetMain, reindexedMain, mainStartRow);
+    log(`保單主表完成（新增 ${reindexedMain.length} 筆，ID ${mainIdOffset}～${mainIdOffset + reindexedMain.length - 1}）`, 'ok');
+    setProgress(75);
+
+    // --- 寫入險種明細表 ---
+    log(`寫入險種明細表「${sheetDetail}」第 ${detailStartRow} 列...`, 'info');
+    await appendToSheets(sheetId, sheetDetail, reindexedDetail, detailStartRow);
+    log(`險種明細表完成（新增 ${reindexedDetail.length} 筆，ID ${detailIdOffset}～${detailIdOffset + reindexedDetail.length - 1}）`, 'ok');
+    setProgress(100);
+
+    setStep(4);
+    log('──────────────────────────', 'info');
+    log(`全部完成！保單主表新增 ${reindexedMain.length} 筆 / 累計 ${mainIdOffset + reindexedMain.length - 1} 筆`, 'ok');
+    log(`        明細表新增 ${reindexedDetail.length} 筆 / 累計 ${detailIdOffset + reindexedDetail.length - 1} 筆`, 'ok');
+    log('──────────────────────────', 'info');
+    document.getElementById('btn-run').textContent = '✓ 寫入完成';
+    document.getElementById('btn-run').className = 'btn btn-success';
+    document.getElementById('btn-run').disabled = true;
+
+  } catch(err) {
+    log('寫入失敗：' + err.message, 'error');
+    document.getElementById('btn-run').disabled = false;
+    document.getElementById('btn-run').textContent = '▶ 重試寫入';
+  }
+}
+</script>
+</body>
+</html>
